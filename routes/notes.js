@@ -222,8 +222,25 @@ router.put('/:id', auth, async (req, res) => {
 
     // If custom last modified date is provided, use it directly
     if (customLastModified) {
-      const newModifiedDate = new Date(customLastModified);
-      console.log('Using custom lastModified date:', customLastModified, 'parsed as:', newModifiedDate);
+      // Handle datetime-local format properly (treat as local time, not UTC)
+      let newModifiedDate;
+      
+      if (customLastModified.includes('T') && !customLastModified.includes('Z') && !customLastModified.includes('+')) {
+        // This is a datetime-local format like "2025-08-13T20:11"
+        // Parse it as local time by creating a Date object with individual components
+        const [datePart, timePart] = customLastModified.split('T');
+        const [year, month, day] = datePart.split('-').map(Number);
+        const [hours, minutes] = timePart.split(':').map(Number);
+        
+        // Create date in local timezone
+        newModifiedDate = new Date(year, month - 1, day, hours, minutes);
+      } else {
+        newModifiedDate = new Date(customLastModified);
+      }
+      
+      console.log('Original datetime string:', customLastModified);
+      console.log('Parsed as local time:', newModifiedDate.toISOString());
+      console.log('Local display:', newModifiedDate.toLocaleString());
       
       // Always use the custom date sent by frontend
       updateData.lastModified = newModifiedDate;
