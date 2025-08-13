@@ -225,8 +225,14 @@ router.put('/:id', auth, async (req, res) => {
       const newModifiedDate = new Date(customLastModified);
       const now = new Date();
       
+      console.log('Custom lastModified received:', customLastModified);
+      console.log('Parsed as date:', newModifiedDate.toISOString());
+      console.log('Current server time:', now.toISOString());
+      console.log('Time difference (ms):', Math.abs(newModifiedDate.getTime() - now.getTime()));
+      
       // Only add custom modified date if it's significantly different from current time (more than 1 minute)
       if (Math.abs(newModifiedDate.getTime() - now.getTime()) > 60000) { // 1 minute tolerance
+        console.log('Using custom modified date');
         const newModifiedEntry = {
           date: newModifiedDate,
           modifiedAt: new Date()
@@ -236,6 +242,8 @@ router.put('/:id', auth, async (req, res) => {
         
         // If user set a custom modified date that's different, don't override with current time
         updateData.lastModified = newModifiedDate;
+      } else {
+        console.log('Time difference too small, using current time');
       }
     }
 
