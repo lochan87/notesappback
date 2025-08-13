@@ -204,24 +204,39 @@ router.put('/:id', auth, async (req, res) => {
       lastModified: new Date()
     };
 
-    // Add custom created date to array if provided
+    // Add custom created date to array if provided and different from current
     if (customCreatedAt) {
-      const newCreatedEntry = {
-        date: new Date(customCreatedAt),
-        modifiedAt: new Date()
-      };
-      updateData.$push = updateData.$push || {};
-      updateData.$push.customCreatedDates = newCreatedEntry;
+      const currentCreatedAt = existingNote.mainCreatedAt || existingNote.createdAt;
+      const newCreatedDate = new Date(customCreatedAt);
+      
+      // Only add if the date is actually different
+      if (Math.abs(newCreatedDate.getTime() - new Date(currentCreatedAt).getTime()) > 60000) { // 1 minute tolerance
+        const newCreatedEntry = {
+          date: newCreatedDate,
+          modifiedAt: new Date()
+        };
+        updateData.$push = updateData.$push || {};
+        updateData.$push.customCreatedDates = newCreatedEntry;
+      }
     }
 
-    // Add custom last modified date to array if provided
+    // Add custom last modified date to array only if explicitly different from current time
     if (customLastModified) {
-      const newModifiedEntry = {
-        date: new Date(customLastModified),
-        modifiedAt: new Date()
-      };
-      updateData.$push = updateData.$push || {};
-      updateData.$push.customLastModifiedDates = newModifiedEntry;
+      const newModifiedDate = new Date(customLastModified);
+      const now = new Date();
+      
+      // Only add custom modified date if it's significantly different from current time (more than 1 minute)
+      if (Math.abs(newModifiedDate.getTime() - now.getTime()) > 60000) { // 1 minute tolerance
+        const newModifiedEntry = {
+          date: newModifiedDate,
+          modifiedAt: new Date()
+        };
+        updateData.$push = updateData.$push || {};
+        updateData.$push.customLastModifiedDates = newModifiedEntry;
+        
+        // If user set a custom modified date that's different, don't override with current time
+        updateData.lastModified = newModifiedDate;
+      }
     }
 
     const updatedNote = await Note.findByIdAndUpdate(
