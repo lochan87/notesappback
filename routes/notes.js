@@ -234,13 +234,22 @@ router.put('/:id', auth, async (req, res) => {
         
         // Create date in local timezone
         newModifiedDate = new Date(year, month - 1, day, hours, minutes);
+        
+        // MongoDB Atlas stores in UTC, so we need to adjust for the user's timezone
+        // Get the timezone offset and adjust the date so it displays correctly
+        const userTimezoneOffset = newModifiedDate.getTimezoneOffset(); // in minutes
+        console.log('User timezone offset (minutes):', userTimezoneOffset);
+        
+        // Adjust the date by the timezone offset so when MongoDB converts to UTC,
+        // it will be stored as the user's intended local time
+        newModifiedDate = new Date(newModifiedDate.getTime() - (userTimezoneOffset * 60000));
       } else {
         newModifiedDate = new Date(customLastModified);
       }
       
       console.log('Original datetime string:', customLastModified);
-      console.log('Parsed as local time:', newModifiedDate.toISOString());
-      console.log('Local display:', newModifiedDate.toLocaleString());
+      console.log('Adjusted for MongoDB Atlas UTC storage:', newModifiedDate.toISOString());
+      console.log('Will display as local time:', new Date(newModifiedDate.getTime() + (newModifiedDate.getTimezoneOffset() * 60000)).toLocaleString());
       
       // Always use the custom date sent by frontend
       updateData.lastModified = newModifiedDate;
