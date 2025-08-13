@@ -222,41 +222,33 @@ router.put('/:id', auth, async (req, res) => {
 
     // If custom last modified date is provided, use it directly
     if (customLastModified) {
-      // Handle datetime-local format properly (treat as local time, not UTC)
-      let newModifiedDate;
+      console.log('Original datetime string from frontend:', customLastModified);
       
+      // For datetime-local format, convert to ISO string with explicit timezone
       if (customLastModified.includes('T') && !customLastModified.includes('Z') && !customLastModified.includes('+')) {
-        // This is a datetime-local format like "2025-08-13T20:11"
-        // Parse it as local time by creating a Date object with individual components
+        // This is a datetime-local format like "2025-08-13T20:25"
+        // We'll store it as an ISO string but force it to be treated as IST (UTC+5:30)
+        
+        // Parse the components
         const [datePart, timePart] = customLastModified.split('T');
         const [year, month, day] = datePart.split('-').map(Number);
         const [hours, minutes] = timePart.split(':').map(Number);
         
-        // Create date in local timezone
-        newModifiedDate = new Date(year, month - 1, day, hours, minutes);
+        // Create ISO string manually with IST offset (+05:30)
+        const isoString = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}T${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00.000+05:30`;
+        console.log('Created ISO string with IST timezone:', isoString);
         
-        // MongoDB Atlas stores in UTC, so we need to adjust for the user's timezone
-        // Get the timezone offset and adjust the date so it displays correctly
-        const userTimezoneOffset = newModifiedDate.getTimezoneOffset(); // in minutes
-        console.log('User timezone offset (minutes):', userTimezoneOffset);
-        
-        // Adjust the date by the timezone offset so when MongoDB converts to UTC,
-        // it will be stored as the user's intended local time
-        newModifiedDate = new Date(newModifiedDate.getTime() - (userTimezoneOffset * 60000));
+        // Create date from this ISO string
+        updateData.lastModified = new Date(isoString);
+        console.log('Date object created:', updateData.lastModified.toISOString());
+        console.log('Should display as:', updateData.lastModified.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }));
       } else {
-        newModifiedDate = new Date(customLastModified);
+        updateData.lastModified = new Date(customLastModified);
       }
-      
-      console.log('Original datetime string:', customLastModified);
-      console.log('Adjusted for MongoDB Atlas UTC storage:', newModifiedDate.toISOString());
-      console.log('Will display as local time:', new Date(newModifiedDate.getTime() + (newModifiedDate.getTimezoneOffset() * 60000)).toLocaleString());
-      
-      // Always use the custom date sent by frontend
-      updateData.lastModified = newModifiedDate;
       
       // Also add to custom dates array
       const newModifiedEntry = {
-        date: newModifiedDate,
+        date: updateData.lastModified,
         modifiedAt: new Date()
       };
       updateData.$push = updateData.$push || {};
