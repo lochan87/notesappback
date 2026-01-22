@@ -35,6 +35,7 @@ router.get('/folder/:folderId', auth, async (req, res) => {
       .sort(sortObj)
       .skip(skip)
       .limit(parseInt(limit))
+      .allowDiskUse(true)
       .populate('folderId', 'name color');
 
     const total = await Note.countDocuments(query);
