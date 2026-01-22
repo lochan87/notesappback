@@ -88,4 +88,9 @@ noteSchema.pre('save', function(next) {
 // Text search index
 noteSchema.index({ title: 'text', content: 'text', tags: 'text' });
 
+// Compound indexes for efficient sorting on large datasets
+noteSchema.index({ folderId: 1, isPinned: -1, createdAt: -1 });
+noteSchema.index({ folderId: 1, isPinned: -1, title: 1 });
+noteSchema.index({ folderId: 1, isPinned: -1, lastModified: -1 });
+
 module.exports = mongoose.model('Note', noteSchema);
