@@ -31,43 +31,13 @@ router.get('/folder/:folderId', auth, async (req, res) => {
     sortObj.isPinned = -1;
 
     const skip = (page - 1) * limit;
-    
-    // Use aggregation with allowDiskUse for large datasets
-    const pipeline = [
-      { $match: query },
-      { $sort: sortObj },
-      { $skip: skip },
-      { $limit: parseInt(limit) },
-      {
-        $lookup: {
-          from: 'folders',
-          localField: 'folderId',
-          foreignField: '_id',
-          as: 'folderId'
-        }
-      },
-      { $unwind: '$folderId' },
-      {
-        $project: {
-          _id: 1,
-          title: 1,
-          content: 1,
-          images: 1,
-          tags: 1,
-          isPinned: 1,
-          lastModified: 1,
-          createdAt: 1,
-          updatedAt: 1,
-          customCreatedDates: 1,
-          customLastModifiedDates: 1,
-          'folderId._id': 1,
-          'folderId.name': 1,
-          'folderId.color': 1
-        }
-      }
-    ];
+    const notes = await Note.find(query)
+      .sort(sortObj)
+      .skip(skip)
+      .limit(parseInt(limit))
+      .allowDiskUse(true)
+      .populate('folderId', 'name color');
 
-    const notes = await Note.aggregate(pipeline).allowDiskUse(true);
     const total = await Note.countDocuments(query);
 
     res.json({
@@ -357,44 +327,12 @@ router.get('/search/global', auth, async (req, res) => {
     const query = { $text: { $search: q.trim() } };
     const skip = (page - 1) * limit;
 
-    // Use aggregation with allowDiskUse for large datasets
-    const pipeline = [
-      { $match: query },
-      { $addFields: { score: { $meta: 'textScore' } } },
-      { $sort: { score: -1, createdAt: -1 } },
-      { $skip: skip },
-      { $limit: parseInt(limit) },
-      {
-        $lookup: {
-          from: 'folders',
-          localField: 'folderId',
-          foreignField: '_id',
-          as: 'folderId'
-        }
-      },
-      { $unwind: '$folderId' },
-      {
-        $project: {
-          _id: 1,
-          title: 1,
-          content: 1,
-          images: 1,
-          tags: 1,
-          isPinned: 1,
-          lastModified: 1,
-          createdAt: 1,
-          updatedAt: 1,
-          customCreatedDates: 1,
-          customLastModifiedDates: 1,
-          score: 1,
-          'folderId._id': 1,
-          'folderId.name': 1,
-          'folderId.color': 1
-        }
-      }
-    ];
+    const notes = await Note.find(query)
+      .sort({ score: { $meta: 'textScore' }, createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .populate('folderId', 'name color');
 
-    const notes = await Note.aggregate(pipeline).allowDiskUse(true);
     const total = await Note.countDocuments(query);
 
     res.json({
