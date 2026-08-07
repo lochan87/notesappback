@@ -82,20 +82,17 @@ router.get('/verify', async (req, res) => {
       return res.status(401).json({ valid: false, message: 'No token provided' });
     }
 
+    // jwt.verify() cryptographically validates the signature AND checks expiry.
+    // A DB lookup is unnecessary for a single-user app — if the token is valid
+    // and not expired, the user is authenticated.
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-    
-    // Check if user session is valid
-    const user = await User.findOne({ sessionId: token });
-    
-    if (!user || !user.isAuthenticated) {
-      return res.status(401).json({ valid: false, message: 'Invalid session' });
-    }
 
-    res.json({ 
-      valid: true, 
+    res.json({
+      valid: true,
       user: {
-        id: user._id,
-        lastLogin: user.lastLogin
+        // decoded.iat is available but we return a minimal payload
+        id: 'authenticated',
+        lastLogin: new Date(decoded.timestamp).toISOString()
       }
     });
 

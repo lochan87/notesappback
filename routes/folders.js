@@ -7,16 +7,27 @@ const router = express.Router();
 // Get all folders
 router.get('/', auth, async (req, res) => {
   try {
-    const folders = await Folder.find().sort({ createdAt: -1 });
-    
-    // Update notes count for each folder
-    for (let folder of folders) {
-      const notesCount = await Note.countDocuments({ folderId: folder._id });
-      folder.notesCount = notesCount;
-      await folder.save();
+    // Fetch all folders sorted by creation date
+    const folders = await Folder.find().sort({ createdAt: -1 }).lean();
+
+    // Count notes per folder in a single aggregation instead of N sequential queries
+    const noteCounts = await Note.aggregate([
+      { $group: { _id: '$folderId', count: { $sum: 1 } } }
+    ]);
+
+    // Build a lookup map: folderId → count
+    const countMap = {};
+    for (const { _id, count } of noteCounts) {
+      countMap[String(_id)] = count;
     }
 
-    res.json(folders);
+    // Attach notesCount to each folder (no DB writes needed)
+    const result = folders.map(folder => ({
+      ...folder,
+      notesCount: countMap[String(folder._id)] || 0,
+    }));
+
+    res.json(result);
   } catch (error) {
     console.error('Error fetching folders:', error);
     res.status(500).json({ message: 'Error fetching folders' });
